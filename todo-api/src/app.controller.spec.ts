@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { strictEqual } from 'node:assert';
+import { beforeEach, describe, it } from 'vitest';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -18,7 +20,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+      strictEqual(appController.getHello(), 'Hello World!');
     });
   });
 });
