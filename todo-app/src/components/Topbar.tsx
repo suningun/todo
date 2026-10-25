@@ -4,18 +4,22 @@ import type { Theme } from "../theme";
 
 type TopbarProps = {
   username: string;
+  roleLabel: string;
   search: string;
   setSearch: Dispatch<SetStateAction<string>>;
   onOpenMenu: () => void;
+  onLogout: () => void;
   theme: Theme;
   onToggleTheme: () => void;
 };
 
 function Topbar({
   username,
+  roleLabel,
   search,
   setSearch,
   onOpenMenu,
+  onLogout,
   theme,
   onToggleTheme,
 }: TopbarProps) {
@@ -77,7 +81,7 @@ function Topbar({
               {username}
             </p>
             <p className="text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-white/40">
-              Student
+              {roleLabel}
             </p>
           </div>
 
@@ -88,10 +92,12 @@ function Topbar({
 
         <button
           type="button"
-          className="ml-1 hidden items-center gap-2 rounded-xl border border-stone-200 px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 sm:inline-flex dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
+          onClick={onLogout}
+          aria-label="Sign out"
+          className="ml-1 inline-flex items-center gap-2 rounded-xl border border-stone-200 px-2.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 sm:px-3.5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
         >
           <LogOut className="h-4 w-4" />
-          Sign out
+          <span className="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </header>

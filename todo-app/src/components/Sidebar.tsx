@@ -1,8 +1,9 @@
-import { Home, ListChecks, Star, CircleCheck, Settings, X } from "lucide-react";
+import { Home, ListChecks, CircleCheck, Settings, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type SidebarProps = {
   username: string;
+  roleLabel: string;
   isOpen: boolean;
   onClose: () => void;
 };
@@ -17,12 +18,11 @@ type SidebarLink = {
 const links: SidebarLink[] = [
   { label: "Dashboard", icon: Home, href: "#dashboard", active: true },
   { label: "My Tasks", icon: ListChecks, href: "#tasks", active: false },
-  { label: "Priority", icon: Star, href: "#tasks", active: false },
-  { label: "Completed", icon: CircleCheck, href: "#tasks", active: false },
+  { label: "Done", icon: CircleCheck, href: "#tasks", active: false },
   { label: "Settings", icon: Settings, href: "#settings", active: false },
 ];
 
-function Sidebar({ username, isOpen, onClose }: SidebarProps) {
+function Sidebar({ username, roleLabel, isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Mobile backdrop */}
@@ -89,7 +89,7 @@ function Sidebar({ username, isOpen, onClose }: SidebarProps) {
                 {username}
               </p>
               <p className="truncate text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-white/40">
-                Student
+                {roleLabel}
               </p>
             </div>
           </div>

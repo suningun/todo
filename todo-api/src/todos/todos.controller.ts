@@ -1,42 +1,43 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Query } from '@nestjs/common';
-import { TodosService } from './todos.service.js';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import * as currentUserDecorator from '../auth/decorators/current-user.decorator.js';
+import { Role, Roles } from '../common/decorators/roles.decorator.js';
 import { CreateTodoDto } from './dto/create-todo.dto.js';
+import { TodoStatus } from './dto/todo-status.enum.js';
 import { UpdateTodoDto } from './dto/update-todo.dto.js';
 import { ParseStatusPipe } from './pipes/parse-status.pipe.js';
-import { TodoStatus } from './dto/todo-status.enum.js';
-import { Public } from '../common/decorators/public.decorator.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
+import { TodosService } from './todos.service.js';
 
 @Controller('todos')
 export class TodosController {
   constructor(private readonly todosService: TodosService) {}
 
   @Post()
-  create(@Body() createTodoDto: CreateTodoDto) {
-    return this.todosService.create(createTodoDto);
+  create(@Body() createTodoDto: CreateTodoDto, @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser) {
+    return this.todosService.create(createTodoDto, user.id);
   }
 
-  @Public()
   @Get()
-  findAll(@Query('status', ParseStatusPipe) s?: TodoStatus) {
-    return this.todosService.findAll();
+  findAll(@Query('status', ParseStatusPipe) s: TodoStatus | undefined, @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser) {
+    return this.todosService.findAllFor(user, s);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.todosService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser) {
+    return this.todosService.findOneFor(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateTodoDto: UpdateTodoDto) {
-    return this.todosService.update(id, updateTodoDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateTodoDto: UpdateTodoDto,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.todosService.update(id, updateTodoDto, user);
   }
 
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles(Role.ADMIN)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.todosService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser) {
+    return this.todosService.remove(id, user);
   }
 }

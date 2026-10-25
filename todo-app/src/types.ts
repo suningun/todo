@@ -1,13 +1,18 @@
-export type Status = "To Do" | "In Progress" | "Done";
+export type Status = "TODO" | "IN_PROGRESS" | "DONE";
 
 export type FilterValue = Status | "All";
 
-export type PriorityFilter = "All" | "High" | "Normal";
+export type Role = "user" | "admin";
 
 export type Todo = {
   id: number;
   title: string;
   status: Status;
-  priority: boolean;
   createdAt: string;
+};
+
+export const STATUS_LABELS: Record<Status, string> = {
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done",
 };
