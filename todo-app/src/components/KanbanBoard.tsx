@@ -1,35 +1,34 @@
 import { Plus } from "lucide-react";
 import TaskCard from "./TaskCard";
-import type { Status, Todo } from "../types";
+import { STATUS_LABELS, type Status, type Todo } from "../types";
 
 type KanbanBoardProps = {
   todos: Todo[];
+  canDelete: boolean;
   onAdd: (status: Status) => void;
   onEdit: (todo: Todo) => void;
   onDelete: (id: number) => void;
-  onTogglePriority: (id: number) => void;
   onStatusChange: (id: number, status: Status) => void;
 };
 
 type Column = {
   status: Status;
-  label: string;
   dot: string;
   bar: string;
 };
 
 const columns: Column[] = [
-  { status: "In Progress", label: "In Progress", dot: "bg-violet-500", bar: "bg-violet-500" },
-  { status: "To Do", label: "To Do", dot: "bg-amber-500", bar: "bg-amber-500" },
-  { status: "Done", label: "Completed", dot: "bg-emerald-500", bar: "bg-emerald-500" },
+  { status: "TODO", dot: "bg-amber-500", bar: "bg-amber-500" },
+  { status: "IN_PROGRESS", dot: "bg-violet-500", bar: "bg-violet-500" },
+  { status: "DONE", dot: "bg-emerald-500", bar: "bg-emerald-500" },
 ];
 
 function KanbanBoard({
   todos,
+  canDelete,
   onAdd,
   onEdit,
   onDelete,
-  onTogglePriority,
   onStatusChange,
 }: KanbanBoardProps) {
   return (
@@ -45,7 +44,7 @@ function KanbanBoard({
             <div className="flex items-center gap-2.5 px-1">
               <span className={`h-2.5 w-2.5 rounded-full ${column.dot}`} />
               <h3 className="text-sm font-semibold text-stone-900 dark:text-white">
-                {column.label}
+                {STATUS_LABELS[column.status]}
               </h3>
               <span className="text-sm text-stone-400 dark:text-white/40">
                 {columnTodos.length}
@@ -70,9 +69,9 @@ function KanbanBoard({
                 <TaskCard
                   key={todo.id}
                   todo={todo}
+                  canDelete={canDelete}
                   onEdit={onEdit}
                   onDelete={onDelete}
-                  onTogglePriority={onTogglePriority}
                   onStatusChange={onStatusChange}
                 />
               ))}

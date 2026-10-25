@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, MaxLength, IsOptional, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { TodoStatus } from '../dto/todo-status.enum.js';
 
 export class CreateTodoDto {
@@ -8,6 +9,7 @@ export class CreateTodoDto {
     title: string;
 
     @IsOptional()
+    @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
     @IsEnum(TodoStatus)
     status?: TodoStatus;
 }

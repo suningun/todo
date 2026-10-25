@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
+import type { User } from '../../users/user.entity.js';
 
 @Entity()
 export class Todo {
@@ -13,7 +16,7 @@ export class Todo {
   @Column({ length: 200 })
   title: string;
 
-  @Column({ default: 'To Do' })
+  @Column({ default: 'TODO' })
   status: string;
 
   @Column({ default: false })
@@ -21,4 +24,10 @@ export class Todo {
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @ManyToOne('User', 'todos')
+  owner: Relation<User>;
+
+  @Column()
+  ownerId: string;
 }

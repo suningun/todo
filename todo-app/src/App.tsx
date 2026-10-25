@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ListTodo, Clock, CircleCheck } from "lucide-react";
 import Sidebar from "./components/Sidebar";
@@ -9,49 +9,98 @@ import TaskModal from "./components/TaskModal";
 import KanbanBoard from "./components/KanbanBoard";
 import MiniCalendar from "./components/MiniCalendar";
 import QuoteCard from "./components/QuoteCard";
+import AuthScreen from "./components/AuthScreen";
+import { useAuth } from "./auth/context";
+import { ApiError } from "./api/client";
+import {
+  createTodo,
+  deleteTodo,
+  listAllTodos,
+  updateTodo,
+} from "./api/todos";
 import { applyTheme, getInitialTheme, type Theme } from "./theme";
-import { createTodo, deleteTodo, listTodos, updateTodo } from "./api/todos";
-import type { FilterValue, PriorityFilter, Status, Todo } from "./types";
+import type { FilterValue, Status, Todo } from "./types";
 
-function App() {
-  const [username] = useState("Suning");
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return "Your session expired. Please sign in again.";
+    }
+
+    if (err.status === 403) {
+      return "Only admins can delete tasks.";
+    }
+
+    if (err.status === 404) {
+      return "That task could not be found.";
+    }
+
+    return err.message || fallback;
+  }
+
+  return fallback;
+}
+
+function LoadingScreen() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-stone-100 dark:bg-[#0b0b0f]">
+      <div className="flex items-center gap-3 text-stone-500 dark:text-white/50">
+        <span className="grid h-10 w-10 animate-pulse place-items-center rounded-2xl bg-violet-600 text-white">
+          <ListTodo className="h-5 w-5" />
+        </span>
+        <span className="text-sm font-medium">Restoring your session…</span>
+      </div>
+    </div>
+  );
+}
+
+type DashboardProps = {
+  theme: Theme;
+  onToggleTheme: () => void;
+};
+
+function Dashboard({ theme, onToggleTheme }: DashboardProps) {
+  const { user, signOut } = useAuth();
 
   const [todos, setTodos] = useState<Todo[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState<Status>("To Do");
-  const [priority, setPriority] = useState(false);
+  const [status, setStatus] = useState<Status>("TODO");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterValue>("All");
-  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("All");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  useEffect(() => {
-    listTodos()
-      .then(setTodos)
-      .catch((err: unknown) => reportError(err, "Failed to load todos"));
+  const reportError = useCallback((err: unknown, fallback: string) => {
+    setError(describeError(err, fallback));
   }, []);
 
-  function reportError(err: unknown, fallback: string) {
-    setError(err instanceof Error ? err.message : fallback);
-  }
+  useEffect(() => {
+    let active = true;
 
-  function toggleTheme() {
-    setTheme((current) => (current === "dark" ? "light" : "dark"));
-  }
+    listAllTodos()
+      .then((items) => {
+        if (active) setTodos(items);
+      })
+      .catch((err: unknown) => {
+        if (active) reportError(err, "Failed to load todos");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reportError]);
+
+  const emailName = user?.email?.split("@")[0];
+  const username = emailName ?? "Account";
+  const roleLabel = user?.role === "admin" ? "Admin" : "Member";
+  const isAdmin = user?.role === "admin";
 
   function resetForm() {
     setTitle("");
-    setStatus("To Do");
-    setPriority(false);
+    setStatus("TODO");
     setEditingId(null);
   }
 
@@ -69,12 +118,13 @@ function App() {
   function handleEdit(todo: Todo) {
     setTitle(todo.title);
     setStatus(todo.status);
-    setPriority(todo.priority);
     setEditingId(todo.id);
     setIsFormOpen(true);
   }
 
   async function handleDelete(id: number) {
+    if (!isAdmin) return;
+
     setError(null);
 
     try {
@@ -101,44 +151,27 @@ function App() {
     }
   }
 
-  async function togglePriority(id: number) {
-    const current = todos.find((todo) => todo.id === id);
-    if (!current) return;
-
-    setError(null);
-
-    try {
-      const updated = await updateTodo(id, { priority: !current.priority });
-      setTodos((items) =>
-        items.map((todo) => (todo.id === id ? updated : todo)),
-      );
-    } catch (err) {
-      reportError(err, "Failed to update priority");
-    }
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!title.trim()) return;
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return;
 
     setError(null);
 
     try {
       if (editingId !== null) {
         const updated = await updateTodo(editingId, {
-          title: title.trim(),
+          title: trimmedTitle,
           status,
-          priority,
         });
         setTodos((current) =>
           current.map((todo) => (todo.id === editingId ? updated : todo)),
         );
       } else {
         const created = await createTodo({
-          title: title.trim(),
+          title: trimmedTitle,
           status,
-          priority,
         });
         setTodos((current) => [...current, created]);
       }
@@ -150,8 +183,10 @@ function App() {
     closeForm();
   }
 
-  const completed = todos.filter((todo) => todo.status === "Done").length;
-  const inProgress = todos.filter((todo) => todo.status === "In Progress").length;
+  const done = todos.filter((todo) => todo.status === "DONE").length;
+  const inProgress = todos.filter(
+    (todo) => todo.status === "IN_PROGRESS",
+  ).length;
 
   const filteredTodos = todos.filter((todo) => {
     const matchesSearch = todo.title
@@ -160,17 +195,14 @@ function App() {
 
     const matchesStatus = filter === "All" || todo.status === filter;
 
-    const matchesPriority =
-      priorityFilter === "All" ||
-      (priorityFilter === "High" ? todo.priority : !todo.priority);
-
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus;
   });
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800 md:flex dark:bg-[#0b0b0f] dark:text-white">
       <Sidebar
         username={username}
+        roleLabel={roleLabel}
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
       />
@@ -178,11 +210,13 @@ function App() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           username={username}
+          roleLabel={roleLabel}
           search={search}
           setSearch={setSearch}
           onOpenMenu={() => setIsMenuOpen(true)}
+          onLogout={() => void signOut()}
           theme={theme}
-          onToggleTheme={toggleTheme}
+          onToggleTheme={onToggleTheme}
         />
 
         <main id="dashboard" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
@@ -194,7 +228,8 @@ function App() {
 
           <section className="mb-6">
             <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl dark:text-white">
-              Welcome back, {username} <span aria-hidden="true">👋</span>
+              Welcome back{emailName ? `, ${emailName}` : ""}{" "}
+              <span aria-hidden="true">👋</span>
             </h1>
             <p className="mt-2 text-sm text-stone-500 dark:text-white/50">
               How are you feeling today? Here is your task overview.
@@ -214,12 +249,12 @@ function App() {
               title="In Progress"
               value={inProgress}
               icon={<Clock className="h-[18px] w-[18px]" />}
-              color="bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+              color="bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300"
               hint="Currently being worked on"
             />
             <StatCard
-              title="Completed"
-              value={completed}
+              title="Done"
+              value={done}
               icon={<CircleCheck className="h-[18px] w-[18px]" />}
               color="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
               hint="Tasks finished"
@@ -227,22 +262,17 @@ function App() {
           </section>
 
           <section className="mb-6">
-            <TaskFilters
-              filter={filter}
-              setFilter={setFilter}
-              priorityFilter={priorityFilter}
-              setPriorityFilter={setPriorityFilter}
-            />
+            <TaskFilters filter={filter} setFilter={setFilter} />
           </section>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             <section id="tasks">
               <KanbanBoard
                 todos={filteredTodos}
+                canDelete={isAdmin}
                 onAdd={openCreate}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                onTogglePriority={togglePriority}
                 onStatusChange={handleStatusChange}
               />
             </section>
@@ -262,12 +292,31 @@ function App() {
         setTitle={setTitle}
         status={status}
         setStatus={setStatus}
-        priority={priority}
-        setPriority={setPriority}
         handleSubmit={handleSubmit}
         editingId={editingId}
       />
     </div>
+  );
+}
+
+function App() {
+  const { status } = useAuth();
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  if (status === "loading") return <LoadingScreen />;
+  if (status === "guest") return <AuthScreen />;
+
+  return (
+    <Dashboard
+      theme={theme}
+      onToggleTheme={() =>
+        setTheme((current) => (current === "dark" ? "light" : "dark"))
+      }
+    />
   );
 }
 

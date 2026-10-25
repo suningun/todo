@@ -1,47 +1,52 @@
+import { request } from "./client";
 import type { Status, Todo } from "../types";
 
-const BASE_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+/**
+ * `status` is optional on the API; omitting it returns every todo owned by the
+ * signed-in user.
+ */
+export function listTodos(status?: Status): Promise<Todo[]> {
+  const query = status ? `?status=${status.toLowerCase()}` : "";
+
+  return request<Todo[]>(`/todos${query}`, { auth: true });
+}
+
+export function listAllTodos(): Promise<Todo[]> {
+  return listTodos();
+}
+
+export function getTodo(id: number): Promise<Todo> {
+  return request<Todo>(`/todos/${id}`, { auth: true });
+}
 
 export type NewTodo = {
   title: string;
   status: Status;
-  priority: boolean;
 };
 
 export type TodoUpdate = Partial<NewTodo>;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
-  }
-
-  const body = await response.text();
-  return (body ? JSON.parse(body) : undefined) as T;
-}
-
-export function listTodos(): Promise<Todo[]> {
-  return request<Todo[]>("/todos");
-}
-
+// The backend derives ownership from the bearer token and rejects any extra
+// fields (ownerId/userId included), so only title/status are ever sent.
 export function createTodo(todo: NewTodo): Promise<Todo> {
   return request<Todo>("/todos", {
     method: "POST",
-    body: JSON.stringify(todo),
+    auth: true,
+    body: todo,
   });
 }
 
 export function updateTodo(id: number, todo: TodoUpdate): Promise<Todo> {
   return request<Todo>(`/todos/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(todo),
+    auth: true,
+    body: todo,
   });
 }
 
 export function deleteTodo(id: number): Promise<void> {
-  return request<void>(`/todos/${id}`, { method: "DELETE" });
+  return request<void>(`/todos/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
 }

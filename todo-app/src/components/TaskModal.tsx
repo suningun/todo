@@ -11,8 +11,6 @@ type TaskModalProps = {
   setTitle: Dispatch<SetStateAction<string>>;
   status: Status;
   setStatus: Dispatch<SetStateAction<Status>>;
-  priority: boolean;
-  setPriority: Dispatch<SetStateAction<boolean>>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
   editingId: number | null;
 };

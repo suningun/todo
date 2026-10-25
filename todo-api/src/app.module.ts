@@ -5,6 +5,11 @@ import Joi from 'joi';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { TodosModule } from './todos/todos.module.js';
+import { UsersModule } from './users/users.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -16,6 +21,8 @@ import { TodosModule } from './todos/todos.module.js';
         DB_PASSWORD: Joi.string().required(),
         DB_NAME: Joi.string().required(),
         API_KEY: Joi.string().min(8).required(),
+        JWT_SECRET: Joi.string().min(16).required(),
+        JWT_REFRESH_SECRET: Joi.string().min(16).required(),
       }),
     }),
     TypeOrmModule.forRootAsync({
@@ -32,8 +39,14 @@ import { TodosModule } from './todos/todos.module.js';
       }),
     }),
     TodosModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}
